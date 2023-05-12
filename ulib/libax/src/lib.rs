@@ -66,5 +66,8 @@ pub mod net;
 #[cfg(feature = "display")]
 pub mod display;
 
+#[cfg(feature = "hypervisor")]
+pub mod vmm;
+
 #[cfg(feature = "cbindings")]
 pub mod cbindings;

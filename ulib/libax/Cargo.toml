@@ -46,6 +46,9 @@ net = ["axruntime/net", "dep:axnet"]
 # Display
 display = ["axruntime/display", "dep:axdisplay"]
 
+# Hypervisor
+hypervisor = ["alloc", "axruntime/hypervisor", "dep:axvm"]
+
 # Logging
 log-level-off = ["axlog/log-level-off"]
 log-level-error = ["axlog/log-level-error"]
@@ -75,6 +78,7 @@ axnet = { path = "../../modules/axnet", optional = true }
 axruntime = { path = "../../modules/axruntime", default-features = false }
 axsync = { path = "../../modules/axsync", default-features = false, optional = true }
 axtask = { path = "../../modules/axtask", default-features = false, optional = true }
+axvm = { path = "../../modules/axvm", optional = true }
 
 [build-dependencies]
 cbindgen = { version = "0.24", optional = true }

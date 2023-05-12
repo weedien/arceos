@@ -4,6 +4,9 @@ mod macros;
 mod context;
 mod trap;
 
+#[cfg(feature = "hypervisor")]
+pub mod hypervisor;
+
 use memory_addr::{PhysAddr, VirtAddr};
 use riscv::asm;
 use riscv::register::{satp, sstatus, stvec};

@@ -1,0 +1,22 @@
+[package]
+name = "axvm"
+version = "0.1.0"
+edition = "2021"
+authors = ["Yu Li <wfly1998@sina.com>"]
+description = "ArceOS hypervisor module"
+license = "GPL-3.0-or-later OR Apache-2.0"
+homepage = "https://github.com/rcore-os/arceos"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+platform-qemu-virt-riscv = []
+platform-qemu-virt-aarch64 = []
+default = []
+
+[dependencies]
+log = "0.4"
+axerrno = { path = "../../crates/axerrno" }
+axhal = { path = "../axhal", features = ["hypervisor"] }
+axsync = { path = "../axsync", default-features = false }
+memory_addr = { path = "../../crates/memory_addr" }

@@ -1,0 +1,10 @@
+[package]
+name = "arceos-vmm"
+version = "0.1.0"
+edition = "2021"
+authors = ["Yu Li <wfly1998@sina.com>"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libax = { path = "../../ulib/libax", features = ["paging", "hypervisor", "multitask", "smp"] }

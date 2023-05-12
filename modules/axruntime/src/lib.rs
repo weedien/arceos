@@ -184,6 +184,9 @@ pub extern "C" fn rust_main(cpu_id: usize, dtb: usize) -> ! {
         core::hint::spin_loop();
     }
 
+    #[cfg(feature = "hypervisor")]
+    axvm::axvm_init();
+
     unsafe { main() };
 
     #[cfg(feature = "multitask")]

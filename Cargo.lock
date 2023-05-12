@@ -119,6 +119,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "arceos-vmm"
+version = "0.1.0"
+dependencies = [
+ "libax",
+]
+
+[[package]]
 name = "arceos-yield"
 version = "0.1.0"
 dependencies = [
@@ -340,6 +347,7 @@ dependencies = [
  "axlog",
  "axnet",
  "axtask",
+ "axvm",
  "crate_interface 0.1.1",
  "kernel_guard",
  "lazy_init",
@@ -374,6 +382,17 @@ dependencies = [
  "scheduler",
  "spinlock",
  "timer_list",
+]
+
+[[package]]
+name = "axvm"
+version = "0.1.0"
+dependencies = [
+ "axerrno",
+ "axhal",
+ "axsync",
+ "log",
+ "memory_addr",
 ]
 
 [[package]]
@@ -669,10 +688,6 @@ checksum = "e15e994575e38332cf4a2dc9dc745ff6a65695d37a41e00efadd57fcd42c1ba4"
 dependencies = [
  "thiserror",
 ]
-
-[[package]]
-name = "deptool"
-version = "0.1.0"
 
 [[package]]
 name = "driver_block"
@@ -977,6 +992,7 @@ dependencies = [
  "axruntime",
  "axsync",
  "axtask",
+ "axvm",
  "bindgen",
  "cbindgen",
  "spinlock",
@@ -1288,8 +1304,6 @@ checksum = "f162c6dd7b008981e4d40210aca20b4bd0f9b60ca9271061b07f78537722f2e1"
 [[package]]
 name = "riscv"
 version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa3145d2fae3778b1e31ec2e827b228bdc6abd9b74bb5705ba46dcb82069bc4f"
 dependencies = [
  "bit_field",
  "critical-section",
