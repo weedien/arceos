@@ -1,11 +1,16 @@
 use alloc::sync::Arc;
+use axhal::arch;
+use axsync::Mutex;
 
-use crate::vm::VmState;
+use crate::arch::vcpu::VcpuArchState;
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct VcpuState {
     pub id: u8,
+    pub(crate) arch_state: VcpuArchState,
 }
+
+pub type Vcpu = Arc<Mutex<VcpuState>>;
 
 pub enum VcpuExitReason {
     Unknown,
@@ -26,15 +31,26 @@ pub enum VcpuExitReason {
 }
 
 impl VcpuState {
-    pub fn new(id: u8, vm: Arc<VmState>) -> Arc<Self> {
-        let vcpu = Arc::new(VcpuState { id });
-        vm.create_vcpu(vcpu.clone());
-        vcpu
+    pub(crate) fn new(id: u8) -> Vcpu {
+        Arc::new(Mutex::new(VcpuState {
+            id,
+            arch_state: VcpuArchState::default(),
+        }))
     }
 
-    pub fn reset(&mut self) {}
+    pub fn run(&mut self) -> Option<VcpuExitReason> {
+        loop {
+            arch::disable_irqs();
 
-    pub fn run(&self) -> Option<usize> {
-        None
+            // flush interrupt
+            //arch::hypervisor::flush_interrupts();
+
+            // switch to
+
+            // sync interrupt
+
+            // exit
+            break None;
+        }
     }
 }

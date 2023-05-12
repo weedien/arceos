@@ -1,42 +1,15 @@
-use riscv::register::{hcounteren, hedeleg, hgatp, hideleg, hvip, vsie};
+use riscv::register::{hcounteren, hedeleg, hideleg, hvip, vsie};
 
-static mut GSTAGE_MODE: hgatp::Mode = hgatp::Mode::Bare;
-static mut GSTAGE_PGD_LEVEL: usize = 0;
+//#[cfg(target_arch = "riscv32")]
+//static GSTAGE_MODE: hgatp::Mode = hgatp::Mode::Sv32x4;
+//#[cfg(target_arch = "riscv64")]
+//static GSTAGE_MODE: hgatp::Mode = hgatp::Mode::Sv39x4;
+//#[cfg(target_arch = "riscv32")]
+//static GSTAGE_PGD_LEVEL: usize = 2;
+//#[cfg(target_arch = "riscv64")]
+//static GSTAGE_PGD_LEVEL: usize = 3;
 
-unsafe fn gstage_mode_detect() {
-    #[cfg(target_arch = "riscv32")]
-    {
-        GSTAGE_MODE = hgatp::Mode::Sv32x4;
-        GSTAGE_PGD_LEVEL = 2;
-    }
-
-    #[cfg(target_arch = "riscv64")]
-    {
-        GSTAGE_MODE = hgatp::Mode::Sv39x4;
-        GSTAGE_PGD_LEVEL = 3;
-
-        hgatp::set(hgatp::Mode::Sv57x4, 0, 0);
-        if hgatp::read().mode() == hgatp::Mode::Sv57x4 {
-            GSTAGE_MODE = hgatp::Mode::Sv57x4;
-            GSTAGE_PGD_LEVEL = 5;
-            hgatp::set(hgatp::Mode::Bare, 0, 0);
-            return;
-        }
-
-        hgatp::set(hgatp::Mode::Sv48x4, 0, 0);
-        if hgatp::read().mode() == hgatp::Mode::Sv48x4 {
-            GSTAGE_MODE = hgatp::Mode::Sv48x4;
-            GSTAGE_PGD_LEVEL = 4;
-            hgatp::set(hgatp::Mode::Bare, 0, 0);
-            return;
-        }
-    }
-}
-
-pub unsafe fn hypervisor_init() {
-    gstage_mode_detect();
-    info!("hgatp using {:?} G-stage page table format", GSTAGE_MODE);
-}
+pub unsafe fn hypervisor_init() {}
 
 pub unsafe fn hardware_enable() {
     hedeleg::clear();

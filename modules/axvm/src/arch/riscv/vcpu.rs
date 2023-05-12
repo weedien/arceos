@@ -1,6 +1,10 @@
-use axhal::GeneralRegisters;
+use core::arch::global_asm;
+use core::mem::offset_of;
 
-#[derive(Debug, Default)]
+use axhal::arch::GeneralRegisters;
+
+#[repr(C)]
+#[derive(Default)]
 pub(crate) struct CpuContext {
     pub regs: GeneralRegisters,
     pub sepc: usize,
@@ -8,7 +12,8 @@ pub(crate) struct CpuContext {
     pub hstatus: usize,
 }
 
-#[derive(Debug, Default)]
+#[repr(C)]
+#[derive(Default)]
 pub(crate) struct VcpuCsr {
     pub vsstatus: usize,
     pub vsie: usize,
@@ -22,8 +27,8 @@ pub(crate) struct VcpuCsr {
     pub scounteren: usize,
 }
 
-#[derive(Debug, Default)]
-pub struct VcpuArchState {
+#[repr(C)]
+pub(crate) struct VcpuArchState {
     pub mvendorid: usize,
     pub marchid: usize,
     pub mimpid: usize,
@@ -37,3 +42,47 @@ pub struct VcpuArchState {
     pub guest_csr: VcpuCsr,
 }
 
+impl Default for VcpuArchState {
+    fn default() -> Self {
+        let mvendorid = sbi_rt::get_mvendorid();
+        let marchid = sbi_rt::get_marchid();
+        let mimpid = sbi_rt::get_sbi_impl_id();
+        // SPP & SPIE
+        // from S-mode with interrupt enabled
+        let sstatus = 0x00000120;
+        // SPV & SPVP && VTW
+        // to VS-mode with WFI trapping enabled
+        let hstatus = 0x00200180;
+        let guest_context = CpuContext {
+            regs: GeneralRegisters::default(),
+            sepc: 0,
+            sstatus,
+            hstatus,
+        };
+
+        Self {
+            mvendorid,
+            marchid,
+            mimpid,
+            host_sscratch: 0,
+            host_stvec: 0,
+            host_scounteren: 0,
+            host_context: CpuContext::default(),
+            guest_context,
+            guest_csr: VcpuCsr::default(),
+        }
+    }
+}
+
+include_asm_marcos!();
+
+global_asm!("
+.global context_switch
+context_switch:
+
+    REG_S   t0, a0, {mvendorid}
+    REG_L   t0, a0, {vsatp}
+    ",
+    mvendorid = const offset_of!(VcpuArchState, mvendorid),
+    vsatp = const offset_of!(VcpuArchState, guest_csr.vsatp),
+);
