@@ -1,7 +1,8 @@
 mod apic;
 mod boot;
 mod dtables;
-mod uart16550;
+//mod uart16550;
+mod vga_buffer;
 
 pub mod mem;
 pub mod misc;
@@ -16,7 +17,8 @@ pub mod irq {
 }
 
 pub mod console {
-    pub use super::uart16550::*;
+    //pub use super::uart16550::*;
+    pub use super::vga_buffer::*;
 }
 
 extern "C" {
@@ -37,7 +39,8 @@ unsafe extern "C" fn rust_entry(magic: usize, _mbi: usize) {
     if magic == self::boot::MULTIBOOT_BOOTLOADER_MAGIC {
         crate::mem::clear_bss();
         crate::cpu::init_primary(current_cpu_id());
-        self::uart16550::init();
+        //self::uart16550::init();
+        self::vga_buffer::init();
         self::dtables::init_primary();
         self::time::init_early();
         rust_main(current_cpu_id(), 0);
