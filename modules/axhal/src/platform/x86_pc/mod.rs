@@ -40,7 +40,7 @@ unsafe extern "C" fn rust_entry(magic: usize, _mbi: usize) {
         crate::mem::clear_bss();
         crate::cpu::init_primary(current_cpu_id());
         //self::uart16550::init();
-        self::vga_buffer::init();
+        self::console::init();
         self::dtables::init_primary();
         self::time::init_early();
         rust_main(current_cpu_id(), 0);

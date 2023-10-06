@@ -3,6 +3,8 @@
 use lazy_init::LazyInit;
 use spinlock::SpinNoIrq;
 
+use axlog::ColorCode as ConsoleColorCode;
+
 static VGA: SpinNoIrq<VgaTextMode> = SpinNoIrq::new(VgaTextMode::new());
 
 /// The height of the vga text buffer (normally 25 lines).
@@ -35,20 +37,43 @@ enum VgaTextColor {
     White = 15,
 }
 
-/// A combination of a foreground and a background color.
-#[derive(Clone, Copy)]
-#[repr(transparent)]
-struct ColorCode(u8);
-
-impl ColorCode {
-    /// Create a new `ColorCode` with the given foreground and background colors.
-    const fn new(fg: VgaTextColor, bg: VgaTextColor) -> ColorCode {
-        ColorCode((bg as u8) << 4 | (fg as u8))
+impl VgaTextColor {
+    fn from_console_color(color: ConsoleColorCode) -> VgaTextColor {
+        match color {
+            ConsoleColorCode::Black => VgaTextColor::Black,
+            ConsoleColorCode::Red => VgaTextColor::Red,
+            ConsoleColorCode::Green => VgaTextColor::Green,
+            ConsoleColorCode::Yellow => VgaTextColor::Brown,
+            ConsoleColorCode::Blue => VgaTextColor::Blue,
+            ConsoleColorCode::Magenta => VgaTextColor::Purple,
+            ConsoleColorCode::Cyan => VgaTextColor::Cyan,
+            ConsoleColorCode::White => VgaTextColor::Gray,
+            ConsoleColorCode::BrightBlack => VgaTextColor::Gray,
+            ConsoleColorCode::BrightRed => VgaTextColor::LightRed,
+            ConsoleColorCode::BrightGreen => VgaTextColor::LightGreen,
+            ConsoleColorCode::BrightYellow => VgaTextColor::Yellow,
+            ConsoleColorCode::BrightBlue => VgaTextColor::LightBlue,
+            ConsoleColorCode::BrightMagenta => VgaTextColor::LightPurple,
+            ConsoleColorCode::BrightCyan => VgaTextColor::LightCyan,
+            ConsoleColorCode::BrightWhite => VgaTextColor::White,
+        }
     }
 }
 
-/// Character for the VGA text buffer, including an ASCII character and a `ColorCode`.
-struct VgaTextChar(u8, ColorCode);
+/// A combination of a foreground and a background color.
+#[derive(Clone, Copy)]
+#[repr(transparent)]
+struct VgaTextColorCode(u8);
+
+impl VgaTextColorCode {
+    /// Create a new `VgaTextColorCode` with the given foreground and background colors.
+    const fn new(fg: VgaTextColor, bg: VgaTextColor) -> VgaTextColorCode {
+        VgaTextColorCode((bg as u8) << 4 | (fg as u8))
+    }
+}
+
+/// Character for the VGA text buffer, including an ASCII character and a `VgaTextColorCode`.
+struct VgaTextChar(u8, VgaTextColorCode);
 
 /// A structure representing the VGA text buffer.
 #[repr(transparent)]
@@ -56,10 +81,29 @@ struct VgaTextBuffer {
     chars: [[VgaTextChar; VGA_BUFFER_WIDTH]; VGA_BUFFER_HEIGHT],
 }
 
+#[derive(Clone, Copy)]
+enum VgaTextSetColor {
+    // \x1b, to LeftBrackets
+    Start,
+    // [, to value or end
+    LeftBrackets,
+    // number
+    Value(u8),
+    // m, end
+    End,
+}
+
+#[derive(Clone, Copy)]
+enum VgaTextState {
+    PutChar,
+    SetColor(VgaTextSetColor),
+}
+
 struct VgaTextMode {
     current_x: usize,
     current_y: usize,
-    current_color: ColorCode,
+    current_color: VgaTextColorCode,
+    state: VgaTextState,
     buffer: LazyInit<&'static mut VgaTextBuffer>,
 }
 
@@ -68,7 +112,8 @@ impl VgaTextMode {
         Self {
             current_x: 0,
             current_y: 0,
-            current_color: ColorCode::new(VgaTextColor::White, VgaTextColor::Black),
+            current_color: VgaTextColorCode::new(VgaTextColor::White, VgaTextColor::Black),
+            state: VgaTextState::PutChar,
             buffer: LazyInit::new(),
         }
     }
@@ -80,7 +125,8 @@ impl VgaTextMode {
 
         let buffer = &mut self.buffer.chars;
 
-        let size = line * VGA_BUFFER_WIDTH * core::mem::size_of::<VgaTextChar>();
+        let size =
+            (VGA_BUFFER_HEIGHT - line) * VGA_BUFFER_WIDTH * core::mem::size_of::<VgaTextChar>();
         let src = &buffer[line][0] as *const VgaTextChar;
         let dst = &mut buffer[0][0] as *mut VgaTextChar;
         unsafe {
@@ -89,16 +135,97 @@ impl VgaTextMode {
         self.current_y -= line;
     }
 
+    fn process_char(&mut self, ch: u8) -> VgaTextState {
+        match &self.state {
+            VgaTextState::PutChar => {
+                if ch == 0x1b {
+                    self.state = VgaTextState::SetColor(VgaTextSetColor::Start);
+                }
+            }
+            VgaTextState::SetColor(state) => {
+                match state {
+                    VgaTextSetColor::Start => {
+                        if ch == b'[' {
+                            self.state = VgaTextState::SetColor(VgaTextSetColor::LeftBrackets);
+                        } else {
+                            // ignore invalid state and put it
+                            self.state = VgaTextState::PutChar;
+                        }
+                    }
+                    VgaTextSetColor::LeftBrackets => {
+                        match ch {
+                            b'm' => {
+                                self.set_color(None);
+                                self.state = VgaTextState::SetColor(VgaTextSetColor::End);
+                            }
+                            ch_val @ b'0'..=b'9' => {
+                                self.state =
+                                    VgaTextState::SetColor(VgaTextSetColor::Value(ch_val - b'0'));
+                            }
+                            _ => {
+                                // ignore invalid state and put it
+                                self.state = VgaTextState::PutChar;
+                            }
+                        }
+                    }
+                    VgaTextSetColor::Value(v) => {
+                        match ch {
+                            b'm' => {
+                                let color = match (*v).try_into() {
+                                    Ok(c) => Some(VgaTextColorCode::new(
+                                        VgaTextColor::from_console_color(c),
+                                        VgaTextColor::Black,
+                                    )),
+                                    Err(_) => None,
+                                };
+                                self.set_color(color);
+                                self.state = VgaTextState::SetColor(VgaTextSetColor::End);
+                            }
+                            ch_val @ b'0'..=b'9' => {
+                                self.state = VgaTextState::SetColor(VgaTextSetColor::Value(
+                                    v * 10 + (ch_val - b'0'),
+                                ));
+                            }
+                            _ => {
+                                // ignore invalid state and put it
+                                self.state = VgaTextState::PutChar;
+                            }
+                        }
+                    }
+                    VgaTextSetColor::End => {
+                        if ch == 0x1b {
+                            self.state = VgaTextState::SetColor(VgaTextSetColor::Start);
+                        } else {
+                            self.state = VgaTextState::PutChar;
+                        }
+                    }
+                }
+            }
+        }
+
+        self.state
+    }
+
+    fn set_color(&mut self, color: Option<VgaTextColorCode>) {
+        self.current_color = color.unwrap_or(VgaTextColorCode::new(
+            VgaTextColor::White,
+            VgaTextColor::Black,
+        ));
+    }
+
     fn putchar(&mut self, ch: u8) {
         match ch {
             b'\r' => {
                 self.current_x = 0;
             }
             b'\n' => {
+                // treat it as \r\n
+                self.current_x = 0;
                 self.current_y += 1;
             }
             _ => {
-                self.buffer.chars[self.current_y][self.current_x] = VgaTextChar(ch, self.current_color);
+                self.buffer.chars[self.current_y][self.current_x] =
+                    VgaTextChar(ch, self.current_color);
                 self.current_x += 1;
             }
         }
@@ -116,7 +243,8 @@ impl VgaTextMode {
 pub fn init() {
     let mut vga = VGA.lock();
     unsafe {
-        vga.buffer.init_by(& mut *(VGA_BASE_ADDR as *mut VgaTextBuffer));
+        vga.buffer
+            .init_by(&mut *(VGA_BASE_ADDR as *mut VgaTextBuffer));
     }
     for y in 0..VGA_BUFFER_HEIGHT {
         for x in 0..VGA_BUFFER_WIDTH {
@@ -127,12 +255,9 @@ pub fn init() {
 
 pub fn putchar(c: u8) {
     let mut vga = VGA.lock();
-    match c {
-        b'\n' => {
-            vga.putchar(b'\r');
-            vga.putchar(b'\n');
-        }
-        c => vga.putchar(c),
+
+    if matches!(vga.process_char(c), VgaTextState::PutChar) {
+        vga.putchar(c);
     }
 }
 
