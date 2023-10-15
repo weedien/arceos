@@ -5,6 +5,8 @@ use spinlock::SpinNoIrq;
 
 use axlog::ColorCode as ConsoleColorCode;
 
+use crate::mem::PhysAddr;
+
 static VGA: SpinNoIrq<VgaTextMode> = SpinNoIrq::new(VgaTextMode::new());
 
 /// The height of the vga text buffer (normally 25 lines).
@@ -12,7 +14,7 @@ const VGA_BUFFER_HEIGHT: usize = 25;
 /// The width of the vga text buffer (normally 80 columns).
 const VGA_BUFFER_WIDTH: usize = 80;
 /// The MMIO address of VGA buffer.
-const VGA_BASE_ADDR: usize = 0xb8000;
+const VGA_BASE_ADDR: PhysAddr = PhysAddr::from(0xb_8000);
 
 /// The standard color palette in VGA text mode.
 #[allow(dead_code)]
@@ -240,19 +242,6 @@ impl VgaTextMode {
     }
 }
 
-pub fn init() {
-    let mut vga = VGA.lock();
-    unsafe {
-        vga.buffer
-            .init_by(&mut *(VGA_BASE_ADDR as *mut VgaTextBuffer));
-    }
-    for y in 0..VGA_BUFFER_HEIGHT {
-        for x in 0..VGA_BUFFER_WIDTH {
-            vga.buffer.chars[y][x] = VgaTextChar(b' ', vga.current_color);
-        }
-    }
-}
-
 pub fn putchar(c: u8) {
     let mut vga = VGA.lock();
 
@@ -263,4 +252,31 @@ pub fn putchar(c: u8) {
 
 pub fn getchar() -> Option<u8> {
     None
+}
+
+pub(super) fn init_early() {
+    let mut vga = VGA.lock();
+    unsafe {
+        vga.buffer
+            .init_by(&mut *(VGA_BASE_ADDR.as_usize() as *mut VgaTextBuffer));
+    }
+    for y in 0..VGA_BUFFER_HEIGHT {
+        for x in 0..VGA_BUFFER_WIDTH {
+            vga.buffer.chars[y][x] = VgaTextChar(b' ', vga.current_color);
+        }
+    }
+}
+
+pub(super) fn init() {
+    #[cfg(feature = "paging")]
+    {
+        use crate::mem::phys_to_virt;
+
+        let mut vga = VGA.lock();
+        vga.buffer = LazyInit::new();
+        unsafe {
+            vga.buffer
+                .init_by(&mut *(phys_to_virt(VGA_BASE_ADDR).as_usize() as *mut VgaTextBuffer));
+        }
+    }
 }

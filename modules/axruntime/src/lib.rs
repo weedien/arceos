@@ -146,7 +146,6 @@ pub extern "C" fn rust_main(cpu_id: usize, dtb: usize) -> ! {
         remap_kernel_memory().expect("remap kernel memoy failed");
     }
 
-    info!("Initialize platform devices...");
     axhal::platform_init();
 
     #[cfg(feature = "multitask")]
@@ -190,6 +189,8 @@ pub extern "C" fn rust_main(cpu_id: usize, dtb: usize) -> ! {
     }
 
     unsafe { main() };
+
+    loop {}
 
     #[cfg(feature = "multitask")]
     axtask::exit(0);
