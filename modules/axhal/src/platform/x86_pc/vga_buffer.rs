@@ -3,6 +3,8 @@
 use lazy_init::LazyInit;
 use spinlock::SpinNoIrq;
 
+use core::fmt::{self, Write};
+
 use axlog::ColorCode as ConsoleColorCode;
 
 use crate::mem::PhysAddr;
@@ -107,6 +109,17 @@ struct VgaTextMode {
     current_color: VgaTextColorCode,
     state: VgaTextState,
     buffer: LazyInit<&'static mut VgaTextBuffer>,
+}
+
+impl Write for VgaTextMode {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for ch in s.bytes() {
+            if matches!(self.process_char(ch), VgaTextState::PutChar) {
+                self.putchar(ch);
+            }
+        }
+        Ok(())
+    }
 }
 
 impl VgaTextMode {
@@ -240,6 +253,12 @@ impl VgaTextMode {
             self.scroll_up(self.current_y - VGA_BUFFER_HEIGHT + 1);
         }
     }
+
+    fn write_str(&mut self, s: &str) {
+        for ch in s.bytes() {
+            self.putchar(ch);
+        }
+    }
 }
 
 pub fn putchar(c: u8) {
@@ -248,6 +267,38 @@ pub fn putchar(c: u8) {
     if matches!(vga.process_char(c), VgaTextState::PutChar) {
         vga.putchar(c);
     }
+}
+
+/// [INFO] 级别的日志输出
+pub fn print_info(args: core::fmt::Arguments) -> fmt::Result {
+    let mut vga = VGA.lock();
+    vga.set_color(Some(VgaTextColorCode::new(
+        VgaTextColor::Green,
+        VgaTextColor::Black,
+    )));
+    // 添加前缀
+    vga.write_str("[INFO] ");
+    vga.set_color(Some(VgaTextColorCode::new(
+        VgaTextColor::White,
+        VgaTextColor::Black,
+    )));
+    vga.write_fmt(args)
+}
+
+/// [DEBUG] 级别的日志输出
+pub fn print_debug(args: core::fmt::Arguments) -> fmt::Result {
+    let mut vga = VGA.lock();
+    vga.set_color(Some(VgaTextColorCode::new(
+        VgaTextColor::Yellow,
+        VgaTextColor::Black,
+    )));
+    // 添加前缀
+    vga.write_str("[DEBUG] ");
+    vga.set_color(Some(VgaTextColorCode::new(
+        VgaTextColor::White,
+        VgaTextColor::Black,
+    )));
+    vga.write_fmt(args)
 }
 
 pub fn getchar() -> Option<u8> {

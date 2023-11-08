@@ -21,3 +21,24 @@ macro_rules! println {
         $crate::io::__print_impl(format_args!("{}\n", format_args!($($arg)*)));
     }
 }
+
+#[macro_export]
+macro_rules! pinfo {
+    () => { $crate::__pinfo_impl(format_args!($($arg)*)) };
+    ($($arg:tt)*) => {
+        if 2 >= $crate::get_log_level() {
+            $crate::io::__pinfo_impl(format_args!("{}\n", format_args!($($arg)*)));
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! pdebug {
+    () => { $crate::__pdebug_impl(format_args!($($arg)*)) };
+    ($($arg:tt)*) => {
+        if 1 >= $crate::get_log_level() {
+            $crate::io::__pdebug_impl(format_args!("{}\n", format_args!($($arg)*)));
+        }
+        // $crate::io::__pdebug_impl(format_args!("{}\n", format_args!($($arg)*)));
+    }
+}

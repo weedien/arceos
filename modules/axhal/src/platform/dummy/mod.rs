@@ -2,6 +2,8 @@
 #![allow(dead_code)]
 
 pub mod console {
+    use core::fmt;
+
     /// Writes a byte to the console.
     pub fn putchar(c: u8) {
         unimplemented!()
@@ -9,6 +11,14 @@ pub mod console {
 
     /// Reads a byte from the console, or returns [`None`] if no input is available.
     pub fn getchar() -> Option<u8> {
+        unimplemented!()
+    }
+
+    pub fn pinfo(args: fmt::Arguments) -> fmt::Result {
+        unimplemented!()
+    }
+
+    pub fn pdebug(args: fmt::Arguments) -> fmt::Result {
         unimplemented!()
     }
 }

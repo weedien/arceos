@@ -76,3 +76,32 @@ pub mod time;
 pub mod fs;
 #[cfg(feature = "net")]
 pub mod net;
+
+use core::sync::atomic::{AtomicUsize, Ordering};
+
+pub static LOG_LEVEL: AtomicUsize = AtomicUsize::new(1);
+
+/// 0: trace, 1: debug, 2: info, 3: error
+static LOG_LEVEL_NAME: [&str; 4] = ["trace", "debug", "info", "error"];
+
+/// 设置日志级别
+pub fn init_log_level(level: &str) {
+    // dubug 和 release 模式下的日志级别不同
+    #[cfg(debug_assertions)]
+    {
+        LOG_LEVEL.store(1, Ordering::Relaxed);
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        LOG_LEVEL.store(2, Ordering::Relaxed);
+    }
+    // 根据qemu启动命令中的LOG参数，确定日志级别
+    LOG_LEVEL.store(
+        LOG_LEVEL_NAME.iter().position(|&x| x == level).unwrap_or(1),
+        Ordering::Relaxed,
+    );
+}
+
+pub fn get_log_level() -> usize {
+    LOG_LEVEL.load(Ordering::Relaxed)
+}

@@ -23,6 +23,7 @@ mod cmd;
 #[cfg(feature = "use-ramfs")]
 mod ramfs;
 
+use std::init_log_level;
 use std::io::prelude::*;
 
 const LF: u8 = b'\n';
@@ -43,11 +44,18 @@ fn print_prompt() {
 
 #[cfg_attr(feature = "axstd", no_mangle)]
 fn main() {
+    // 设置日志级别，也可以通过懒加载的方式设置
+    init_log_level(option_env!("AX_LOG").unwrap_or(""));
+
     let mut stdin = std::io::stdin();
     let mut stdout = std::io::stdout();
 
     let mut buf = [0; MAX_CMD_LEN];
     let mut cursor = 0;
+
+    pinfo!("some info");
+    pdebug!("some debug");
+
     cmd::run_cmd("help".as_bytes());
     print_prompt();
 

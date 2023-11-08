@@ -55,6 +55,8 @@ pub mod paging;
 
 /// Console input and output.
 pub mod console {
+    use core::fmt;
+
     pub use super::platform::console::*;
 
     /// Write a slice of bytes to the console.
@@ -62,6 +64,14 @@ pub mod console {
         for c in bytes {
             putchar(*c);
         }
+    }
+
+    pub fn pinfo(args: fmt::Arguments) -> fmt::Result {
+        print_info(args)
+    }
+
+    pub fn pdebug(args: fmt::Arguments) -> fmt::Result {
+        print_debug(args)
     }
 }
 
