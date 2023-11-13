@@ -6,6 +6,7 @@ mod vga_buffer;
 
 pub mod mem;
 pub mod misc;
+pub mod ps2_key;
 pub mod time;
 
 #[cfg(feature = "smp")]
@@ -19,6 +20,10 @@ pub mod irq {
 pub mod console {
     //pub use super::uart16550::*;
     pub use super::vga_buffer::*;
+}
+
+pub mod keyboard {
+    pub use super::ps2_key::*;
 }
 
 extern "C" {
@@ -62,6 +67,7 @@ pub fn platform_init() {
     self::console::init();
     self::apic::init_primary();
     self::time::init_primary();
+    self::keyboard::init();
 }
 
 /// Initializes the platform devices for secondary CPUs.

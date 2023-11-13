@@ -65,14 +65,16 @@ pub mod console {
             putchar(*c);
         }
     }
-
     pub fn pinfo(args: fmt::Arguments) -> fmt::Result {
         print_info(args)
     }
-
     pub fn pdebug(args: fmt::Arguments) -> fmt::Result {
         print_debug(args)
     }
+}
+
+pub mod keyboard {
+    pub use super::platform::keyboard::*;
 }
 
 /// Miscellaneous operation, e.g. terminate the system.

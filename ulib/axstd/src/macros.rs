@@ -39,6 +39,5 @@ macro_rules! pdebug {
         if 1 >= $crate::get_log_level() {
             $crate::io::__pdebug_impl(format_args!("{}\n", format_args!($($arg)*)));
         }
-        // $crate::io::__pdebug_impl(format_args!("{}\n", format_args!($($arg)*)));
     }
 }

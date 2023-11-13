@@ -10,6 +10,7 @@ use axlog::ColorCode as ConsoleColorCode;
 use crate::mem::PhysAddr;
 
 static VGA: SpinNoIrq<VgaTextMode> = SpinNoIrq::new(VgaTextMode::new());
+static STDIN_BUFFER: SpinNoIrq<StdinBuffer> = SpinNoIrq::new(StdinBuffer::new());
 
 /// The height of the vga text buffer (normally 25 lines).
 const VGA_BUFFER_HEIGHT: usize = 25;
@@ -17,6 +18,7 @@ const VGA_BUFFER_HEIGHT: usize = 25;
 const VGA_BUFFER_WIDTH: usize = 80;
 /// The MMIO address of VGA buffer.
 const VGA_BASE_ADDR: PhysAddr = PhysAddr::from(0xb_8000);
+const STDIN_BUFFER_SIZE: usize = 1024;
 
 /// The standard color palette in VGA text mode.
 #[allow(dead_code)]
@@ -301,8 +303,50 @@ pub fn print_debug(args: core::fmt::Arguments) -> fmt::Result {
     vga.write_fmt(args)
 }
 
+// 标准输入的缓存块
+struct StdinBuffer {
+    buffer: [u8; STDIN_BUFFER_SIZE],
+    head: usize,
+    tail: usize,
+    size: usize,
+}
+
+impl StdinBuffer {
+    const fn new() -> Self {
+        Self {
+            buffer: [0; STDIN_BUFFER_SIZE],
+            head: 0,
+            tail: 0,
+            size: 0,
+        }
+    }
+
+    fn write(&mut self, data: u8) {
+        if self.size < STDIN_BUFFER_SIZE {
+            self.buffer[self.tail] = data;
+            self.tail = (self.tail + 1) % STDIN_BUFFER_SIZE;
+            self.size += 1;
+        }
+    }
+
+    fn read(&mut self) -> Option<u8> {
+        if self.size > 0 {
+            let data = self.buffer[self.head];
+            self.head = (self.head + 1) % STDIN_BUFFER_SIZE;
+            self.size -= 1;
+            Some(data)
+        } else {
+            None
+        }
+    }
+}
+
+pub fn put2stdin(c: u8) {
+    STDIN_BUFFER.lock().write(c);
+}
+
 pub fn getchar() -> Option<u8> {
-    None
+    STDIN_BUFFER.lock().read()
 }
 
 pub(super) fn init_early() {

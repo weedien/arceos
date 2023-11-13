@@ -21,6 +21,21 @@ pub mod console {
     pub fn pdebug(args: fmt::Arguments) -> fmt::Result {
         unimplemented!()
     }
+
+    pub fn print_debug(args: fmt::Arguments) -> fmt::Result {
+        unimplemented!()
+    }
+
+    pub fn print_info(args: fmt::Arguments) -> fmt::Result {
+        unimplemented!()
+    }
+}
+
+pub mod keyboard {
+    /// Reads a byte from the keyboard, or returns [`None`] if no input is available.
+    pub fn getchar() -> Option<u8> {
+        unimplemented!()
+    }
 }
 
 pub mod misc {
