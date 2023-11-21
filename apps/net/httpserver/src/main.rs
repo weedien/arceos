@@ -32,6 +32,18 @@ Connection: close\r\n\
     };
 }
 
+macro_rules! image_header {
+    () => {
+        "\
+HTTP/1.1 200 OK\r\n\
+Content-Type: image/png\r\n\
+Content-Length: {}\r\n\
+Connection: close\r\n\
+\r\n\
+"
+    };
+}
+
 const CONTENT: &str = r#"<html>
 <head>
   <title>Hello, ArceOS</title>
@@ -63,8 +75,47 @@ fn http_server(mut stream: TcpStream) -> io::Result<()> {
     let mut buf = [0u8; 4096];
     let _len = stream.read(&mut buf)?;
 
-    let response = format!(header!(), CONTENT.len(), CONTENT);
-    stream.write_all(response.as_bytes())?;
+    // 读取buf中第一行的数据，以换行符为分隔符
+    let request_head = buf.split(|&x| x == b'\n').next().unwrap();
+    let mut iter = request_head.split(|&x| x == b' ');
+
+    let method = iter.next().unwrap();
+    let path = iter.next().unwrap();
+    let version = iter.next().unwrap();
+    info!(
+        "Method: {}, Path: {}, Version: {}",
+        std::str::from_utf8(method).unwrap().trim(),
+        std::str::from_utf8(path).unwrap().trim(),
+        std::str::from_utf8(version).unwrap().trim()
+    );
+
+    let mut path = std::str::from_utf8(path).unwrap().trim();
+
+    if path == "/" {
+        path = "/index.html";
+    }
+
+    match path.split(".").last().unwrap() {
+        "html" => {
+            let content = std::fs::read(format!("/html{}", path).as_str()).unwrap();
+            let response = format!(
+                header!(),
+                content.len(),
+                std::str::from_utf8(&content).unwrap()
+            );
+
+            stream.write_all(response.as_bytes())?;
+        }
+        "png" | "jpg" => {
+            let content = std::fs::read(format!("/assets{}", path).as_str()).unwrap();
+            let response_header = format!(image_header!(), content.len());
+            stream.write_all(response_header.as_bytes())?;
+
+            stream.write_all(&content)?;
+        }
+        _ => {}
+    }
+    stream.flush()?;
 
     Ok(())
 }
