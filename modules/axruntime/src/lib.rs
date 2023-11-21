@@ -190,6 +190,12 @@ pub extern "C" fn rust_main(cpu_id: usize, dtb: usize) -> ! {
 
     unsafe { main() };
 
+    loop {
+        if let Some(ch) = axhal::console::getchar() {
+            ax_print!("{}-{}", ch as char, ch);
+        }
+    }
+
     loop {}
 
     #[cfg(feature = "multitask")]

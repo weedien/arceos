@@ -77,10 +77,13 @@ fn main() {
             }
             BS | DL => {
                 if cursor > 0 {
-                    stdout.write_all(&[BS, SPACE, BS]).unwrap();
+                    // 这里&[BS, SPACE, BS]是否存在特别的意义？
+                    // stdout.write_all(&[BS, SPACE, BS]).unwrap();
+                    stdout.write_all(&[BS]).unwrap();
                     cursor -= 1;
                 }
             }
+            // TODO 其他控制字符
             0..=31 => {}
             c => {
                 if cursor < MAX_CMD_LEN - 1 {

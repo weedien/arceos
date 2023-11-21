@@ -240,6 +240,13 @@ impl VgaTextMode {
                 self.current_x = 0;
                 self.current_y += 1;
             }
+            b'\x7f' | b'\x08' => {
+                if self.current_x > 0 {
+                    self.current_x -= 1;
+                }
+                self.buffer.chars[self.current_y][self.current_x] =
+                    VgaTextChar(b' ', self.current_color);
+            }
             _ => {
                 self.buffer.chars[self.current_y][self.current_x] =
                     VgaTextChar(ch, self.current_color);
