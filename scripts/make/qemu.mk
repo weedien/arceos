@@ -15,7 +15,7 @@ qemu_args-x86_64 := \
   -kernel $(OUT_ELF)
 
 qemu_args-riscv64 := \
-  -machine virt \
+  -machine virt,dumpdtb=virt.dtb \
   -bios default \
   -kernel $(OUT_BIN)
 

@@ -1,0 +1,19 @@
+[package]
+name = "axdtb"
+version = "0.1.0"
+edition = "2021"
+authors = ["Huixiang Yuan <weedien@qq.com>"]
+description = "ArceOS dtd analysis module"
+license = "GPL-3.0-or-later OR Apache-2.0"
+homepage = "https://github.com/rcore-os/arceos"
+repository = "https://github.com/rcore-os/arceos/tree/main/modules/dtd"
+documentation = "https://rcore-os.github.io/arceos/axdtd/index.html"
+
+[features]
+default = []
+
+[dependencies]
+dtb-walker = "0.1.3"
+axlog = { path = "../axlog" }
+allocator = { path = "../../crates/allocator" }
+
