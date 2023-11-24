@@ -108,6 +108,7 @@ impl<const PAGE_SIZE: usize> ByteAllocator for EarlyAllocator<PAGE_SIZE> {
     fn dealloc(&mut self, _pos: NonNull<u8>, layout: Layout) {
         let size = layout.size();
         self.used_bytes -= size;
+        self.byte_pos -= size;
         if self.used_bytes == 0 {
             self.byte_pos = self.start;
         }
