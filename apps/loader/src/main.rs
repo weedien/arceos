@@ -1,15 +1,20 @@
 #![cfg_attr(feature = "axstd", no_std)]
 #![cfg_attr(feature = "axstd", no_main)]
+#![feature(asm_const)]
 
 #[cfg(feature = "axstd")]
 use axstd::println;
 
 const PLASH_START: usize = 0x22000000;
+// app running aspace
+// SBI(0x80000000) -> App <- Kernel(0x80200000)
+// 0xffff_ffc0_0000_0000
+const RUN_START: usize = 0xffff_ffc0_8010_0000;
 
 #[cfg_attr(feature = "axstd", no_mangle)]
 fn main() {
-    let apps_start = PLASH_START as *const u8;
-    let num = unsafe { core::slice::from_raw_parts(apps_start, 1) };
+    let load_start = PLASH_START as *const u8;
+    let num = unsafe { core::slice::from_raw_parts(load_start, 1) };
     let apps_num = num[0] as usize;
     println!("apps_num: {:#}", apps_num);
 
@@ -23,13 +28,28 @@ fn main() {
         let content_start = (start + 2) as *const u8;
         let code = unsafe { core::slice::from_raw_parts(content_start, app_size) };
         start += 2 + app_size;
-        println!("app{}_content: {:?}", i, code);
+        println!(
+            "app{}_content: {:?}; address [{:?}]",
+            i,
+            code,
+            code.as_ptr()
+        );
+
+        let run_code = unsafe { core::slice::from_raw_parts_mut(RUN_START as *mut u8, app_size) };
+        run_code.copy_from_slice(code);
+        println!("run code {:?}; address [{:?}]", run_code, run_code.as_ptr());
+
+        println!("Execute app ...");
+
+        // execute app
+        unsafe {
+            core::arch::asm!("
+            li t2, {run_start}
+            jalr t2",
+            run_start = const RUN_START,
+            )
+        }
     }
 
     println!("Load payload ok!");
 }
-
-// #[inline]
-// fn bytes_to_usize(bytes: &[u8]) -> usize {
-//     usize::from_be_bytes(bytes.try_into().unwrap())
-// }
