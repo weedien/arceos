@@ -8,11 +8,15 @@ use axstd::println;
 use axstd::process::exit;
 
 const PLASH_START: usize = 0x22000000;
+// app running aspace
+// SBI(0x80000000) -> App <- Kernel(0x80200000)
+// 0xffff_ffc0_0000_0000
+const RUN_START: usize = 0xffff_ffc0_8010_0000;
 
 #[cfg_attr(feature = "axstd", no_mangle)]
 fn main() {
     let load_start = PLASH_START as *const u8;
-    let load_size = 32; // Dangerous!!! We need to get accurate size of apps.
+    let load_size = 390; // 制作的bin文件中没有记录应用大小，这里手动指定
 
     println!("Load payload ...");
 
@@ -23,11 +27,6 @@ fn main() {
         load_code.as_ptr()
     );
 
-    // app running aspace
-    // SBI(0x80000000) -> App <- Kernel(0x80200000)
-    // 0xffff_ffc0_0000_0000
-    const RUN_START: usize = 0xffff_ffc0_8010_0000;
-
     let run_code = unsafe { core::slice::from_raw_parts_mut(RUN_START as *mut u8, load_size) };
     run_code.copy_from_slice(load_code);
     println!("run code {:?}; address [{:?}]", run_code, run_code.as_ptr());
@@ -36,29 +35,24 @@ fn main() {
 
     register_abi(SYS_HELLO, abi_hello as usize);
     register_abi(SYS_PUTCHAR, abi_putchar as usize);
-    register_abi(SYS_TERMINATE, abi_terminate as usize);
+    register_abi(SYS_TERMINATE, abi_termiate as usize);
 
     println!("Execute app ...");
-    let arg0: u8 = b'A';
+
+    unsafe {
+        let abi_table_ptr = core::ptr::addr_of_mut!(ABI_TABLE);
+        println!("ABI_TABLE Address: {:p}", abi_table_ptr);
+        println!("ABI_TABLE: {:x?}", ABI_TABLE);
+    }
 
     // execute app
     unsafe {
         core::arch::asm!("
-        li      t0, {abi_num}
-        slli    t0, t0, 3
-        la      t1, {abi_table}
-        add     t1, t1, t0
-        ld      t1, (t1)
-        jalr    t1
+        la      a0, {abi_table}
         li      t2, {run_start}
-        jalr    t2
-        j       .",
+        jalr    t2",
             run_start = const RUN_START,
             abi_table = sym ABI_TABLE,
-            //abi_num = const SYS_HELLO,
-            // abi_num = const SYS_PUTCHAR,
-            abi_num = const SYS_TERMINATE,
-            in("a0") arg0,
         )
     }
 }
@@ -83,7 +77,7 @@ fn abi_putchar(c: char) {
     println!("[ABI:Print] {c}");
 }
 
-fn abi_terminate() {
+fn abi_termiate() {
     println!("[ABI:Terminated] Bye!");
     exit(0);
 }
